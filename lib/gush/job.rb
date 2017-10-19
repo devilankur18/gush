@@ -1,7 +1,7 @@
 module Gush
   class Job
     attr_accessor :workflow_id, :incoming, :outgoing, :params,
-      :finished_at, :failed_at, :started_at, :enqueued_at, :payloads, :klass
+      :finished_at, :failed_at, :started_at, :enqueued_at, :payloads, :klass, :queue
     attr_reader :name, :output_payload, :params
 
     def initialize(opts = {})
@@ -9,10 +9,17 @@ module Gush
       assign_variables(options)
     end
 
+    def payload(clazz)
+        payload = payloads.detect { |f| f[:class] == clazz.name }
+        raise "Unable to find payload for #{clazz}, available: #{payloads.collect { |f| f[:class]}}" unless payload
+        payload[:output]
+    end
+
     def as_json
       {
         name: name,
         klass: self.class.to_s,
+        queue: queue,
         incoming: incoming,
         outgoing: outgoing,
         finished_at: finished_at,
@@ -98,6 +105,9 @@ module Gush
     end
 
     private
+    def logger
+        Rails.logger
+    end
 
     def client
       @client ||= Client.new
@@ -119,6 +129,7 @@ module Gush
       @klass          = opts[:klass]
       @output_payload = opts[:output_payload]
       @workflow_id    = opts[:workflow_id]
+      @queue          = opts[:queue]
     end
   end
 end

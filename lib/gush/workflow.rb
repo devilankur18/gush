@@ -109,7 +109,8 @@ module Gush
       node = klass.new({
         workflow_id: id,
         name: client.next_free_job_id(id, klass.to_s),
-        params: opts.fetch(:params, {})
+        params: opts.fetch(:params, {}),
+				queue: opts[:queue]
       })
 
       jobs << node

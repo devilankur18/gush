@@ -18,7 +18,6 @@ module Gush
       rescue NameError
         raise WorkflowNotFound.new("Workflow with given name doesn't exist")
       end
-      flow
     end
 
     def start_workflow(workflow, job_names = [])
@@ -162,8 +161,9 @@ module Gush
     def enqueue_job(workflow_id, job)
       job.enqueue!
       persist_job(workflow_id, job)
+      queue = job.queue || configuration.namespace
 
-      Gush::Worker.set(queue: configuration.namespace).perform_later(*[workflow_id, job.name])
+      Gush::Worker.set(queue: queue).perform_later(*[workflow_id, job.name])
     end
 
     private

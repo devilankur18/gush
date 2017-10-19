@@ -65,16 +65,46 @@ module Gush
       (Time.now - start).to_f.round(3)
     end
 
-    def enqueue_outgoing_jobs
-      job.outgoing.each do |job_name|
+
+    def enqueue_outgoing_job(workflow_id, job_name)
+      retry_count = 0
+      begin
         RedisMutex.with_lock("gush_enqueue_outgoing_jobs_#{workflow_id}-#{job_name}", sleep: 0.3, block: 2) do
           out = client.find_job(workflow_id, job_name)
-
           if out.ready_to_start?
+            puts "enqueing the job for execution #{out.to_s}"
             client.enqueue_job(workflow_id, out)
           end
+          out
+        end
+      rescue RedisMutex::LockError
+        retry_count += 1
+
+        # Retry after some time
+        if retry_count <= 5
+          sleep 5
+          retry
+        else
+          false
         end
       end
     end
+
+    def enqueue_outgoing_jobs
+      completed_jobs = []
+
+      job.outgoing.each do |job_name|
+        # First check if job is already running or not
+        # status, out = enqueue_outgoing_job(workflow_id, job_name)
+        out = client.find_job(workflow_id, job_name)
+        if out.ready_to_start?
+          out = enqueue_outgoing_job(workflow_id, job_name)
+          completed_jobs << out if out != false
+        else
+          completed_jobs << out
+        end
+      end
+    end
+
   end
 end
