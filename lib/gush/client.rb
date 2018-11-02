@@ -163,8 +163,11 @@ module Gush
       job.enqueue!
       persist_job(workflow_id, job)
       queue = job.queue || configuration.namespace
+      wait = job.wait || 0.seconds
 
-      Gush::Worker.set(queue: queue).perform_later(*[workflow_id, job.name])
+      Gush::Worker
+        .set(queue: queue, wait: wait)
+        .perform_later(*[workflow_id, job.name])
     end
 
     private
